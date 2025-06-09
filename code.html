@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Frame Counter</title>
+    <style>
+        :root {
+            --bg-color: #1e1e1e;
+            --panel-bg-color: #2d2d2d;
+            --input-bg-color: #3c3c3c;
+            --border-color: #444;
+            --text-color: #f0f0f0;
+            --highlight-color: #007acc;
+            --button-bg-color: #4a4a4a;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .panel {
+            background-color: var(--panel-bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+        }
+        
+        h1, h3 {
+            margin-top: 0;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        #drop-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            position: relative;
+        }
+        #drop-zone.dragover {
+            background-color: var(--input-bg-color);
+        }
+        #file-input {
+            display: none;
+        }
+        #select-file-btn {
+            background-color: #f0f0f0;
+            color: #111;
+            font-weight: bold;
+            border: none;
+            padding: 8px 12px;
+            position: absolute;
+            top: 15px;
+            left: 15px;
+        }
+        #select-file-btn:hover {
+            background-color: #fff;
+        }
+
+
+        .remote-video-container {
+            display: flex;
+            gap: 10px;
+        }
+        .remote-video-container input {
+            flex-grow: 1;
+        }
+
+        #video-container {
+            width: 100%;
+            background-color: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            aspect-ratio: 16 / 9;
+            max-height: 500px;
+        }
+        #video-player, #youtube-player {
+            width: 100%;
+            height: 100%;
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 5px;
+            margin-top: 10px;
+        }
+        .controls-grid button {
+            padding: 8px;
+            font-size: 0.9em;
+        }
+        .set-btn {
+            grid-column: span 3;
+            font-weight: bold;
+        }
+        
+        .details-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 12px;
+        }
+        .input-group label {
+            margin-bottom: 5px;
+            font-size: 0.9em;
+            color: #ccc;
+        }
+        .input-with-btn {
+            display: flex;
+            gap: 5px;
+        }
+        .input-with-btn input {
+            flex-grow: 1;
+        }
+
+        input, select, textarea {
+            background-color: var(--input-bg-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 1em;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        input:read-only {
+            background-color: #252525;
+            cursor: not-allowed;
+        }
+        textarea {
+            min-height: 60px;
+            resize: vertical;
+        }
+        button {
+            background-color: var(--button-bg-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-size: 1em;
+        }
+        button:hover {
+            background-color: #5a5a5a;
+        }
+        button:active {
+            background-color: #6a6a6a;
+        }
+
+        @media (max-width: 768px) {
+            .details-grid {
+                grid-template-columns: 1fr;
+            }
+            .controls-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .set-btn {
+                grid-column: span 3;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Video Frame Counter</h1>
+        
+        <div class="panel">
+            <input type="file" id="file-input" accept="video/*">
+            <div id="drop-zone">
+                <button id="select-file-btn">SELECT FILE</button>
+                <p>Drop a video anywhere in this panel</p>
+            </div>
+            
+            <h3 style="margin-top: 20px;">Remote Video</h3>
+            <p style="color: #aaa; margin-top: -5px; font-size: 0.9em;">Paste the full URL of your video. Currently, only YouTube is supported.</p>
+            <div class="remote-video-container">
+                <input type="text" id="video-url" placeholder="YouTube Video URL">
+                <button id="load-url-btn">LOAD URL</button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div id="video-container">
+                <p>Video will appear here</p>
+            </div>
+            <div class="controls-grid">
+                <button class="set-btn" id="set-start-btn">SET START FRAME</button>
+                <button class="set-btn" id="set-end-btn">SET END FRAME</button>
+
+                <button data-unit="f" data-value="-10">-10F</button>
+                <button data-unit="f" data-value="-5">-5F</button>
+                <button data-unit="f" data-value="-1">-1F</button>
+                <button data-unit="f" data-value="1">+1F</button>
+                <button data-unit="f" data-value="5">+5F</button>
+                <button data-unit="f" data-value="10">+10F</button>
+
+                <button data-unit="s" data-value="-10">-10S</button>
+                <button data-unit="s" data-value="-5">-5S</button>
+                <button data-unit="s" data-value="-1">-1S</button>
+                <button data-unit="s" data-value="1">+1S</button>
+                <button data-unit="s" data-value="5">+5S</button>
+                <button data-unit="s" a-value="10">+10S</button>
+
+                <button data-unit="m" data-value="-10">-10M</button>
+                <button data-unit="m" data-value="-5">-5M</button>
+                <button data-unit="m" data-value="-1">-1M</button>
+                <button data-unit="m" data-value="1">+1M</button>
+                <button data-unit="m" data-value="5">+5M</button>
+                <button data-unit="m" data-value="10">+10M</button>
+            </div>
+        </div>
+        
+        <div class="details-grid">
+            <div class="panel">
+                <h3>Timing Details</h3>
+                <div class="input-group">
+                    <label for="video-fps">Video FPS</label>
+                    <input type="number" id="video-fps" value="60" step="0.001">
+                </div>
+                <div class="input-group">
+                    <label>Video Time (seconds)</label>
+                    <input type="text" id="video-time-sec" value="0" readonly>
+                </div>
+                <div class="input-group">
+                    <label>Video Time (formatted)</label>
+                    <input type="text" id="video-time-fmt" value="0" readonly>
+                </div>
+                 <div class="input-group">
+                    <label>Current Frame</label>
+                    <input type="text" id="current-frame" value="0" readonly>
+                </div>
+                <div class="input-group">
+                    <label>Start Frame</label>
+                    <div class="input-with-btn">
+                        <input type="number" id="start-frame-input" value="0">
+                        <button id="go-start-btn">GO</button>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>End Frame</label>
+                    <div class="input-with-btn">
+                        <input type="number" id="end-frame-input" value="0">
+                        <button id="go-end-btn">GO</button>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>Console Preset</label>
+                    <select id="console-preset">
+                        <option value="60.0988139">NES/SNES</option>
+                        <option value="59.94">N64/GCN</option>
+                        <option value="59.826087">GBA</option>
+                        <option value="29.97">PS1/PS2</option>
+                        <option value="60">PC/Generic</option>
+                    </select>
+                </div>
+                 <div class="input-group">
+                    <label for="console-fps">Console FPS</label>
+                    <input type="text" id="console-fps" value="60.0988139" readonly>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h3>Results</h3>
+                <div class="input-group">
+                    <label>Frame Count</label>
+                    <input type="text" id="result-frame-count" value="0" readonly>
+                </div>
+                <div class="input-group">
+                    <label>Video Time</label>
+                    <input type="text" id="result-video-time" value="0" readonly>
+                </div>
+                 <div class="input-group">
+                    <label>Console Time</label>
+                    <input type="text" id="result-console-time" value="0" readonly>
+                </div>
+            </div>
+        </div>
+        
+        <div class="panel">
+            <h3>Mod Note</h3>
+            <textarea id="mod-note-output" readonly>Mod Note: Start Time: 0, End Time: 0, Frame Rate: 60, Time: 0</textarea>
+        </div>
+    </div>
+    
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- DOM Element Selection ---
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const selectFileBtn = document.getElementById('select-file-btn');
+        const videoUrlInput = document.getElementById('video-url');
+        const loadUrlBtn = document.getElementById('load-url-btn');
+        const videoContainer = document.getElementById('video-container');
+        const videoFpsInput = document.getElementById('video-fps');
+        const videoTimeSec = document.getElementById('video-time-sec');
+        const videoTimeFmt = document.getElementById('video-time-fmt');
+        const currentFrameInput = document.getElementById('current-frame');
+        const startFrameInput = document.getElementById('start-frame-input');
+        const endFrameInput = document.getElementById('end-frame-input');
+        const consolePreset = document.getElementById('console-preset');
+        const consoleFpsInput = document.getElementById('console-fps');
+        const resultFrameCount = document.getElementById('result-frame-count');
+        const resultVideoTime = document.getElementById('result-video-time');
+        const resultConsoleTime = document.getElementById('result-console-time');
+        const modNoteOutput = document.getElementById('mod-note-output');
+        const setStartBtn = document.getElementById('set-start-btn');
+        const setEndBtn = document.getElementById('set-end-btn');
+        const goStartBtn = document.getElementById('go-start-btn');
+        const goEndBtn = document.getElementById('go-end-btn');
+        const controlButtons = document.querySelectorAll('.controls-grid button[data-unit]');
+
+        // --- State Variables ---
+        let player = null;
+        let playerType = null; // 'html5' or 'youtube'
+        let videoDuration = 0;
+        let isSeeking = false;
+        let youtubeUpdateInterval = null;
+        let isYouTubeApiReady = false;
+        let queuedVideoId = null;
+
+        // --- Core Functions ---
+
+        /**
+         * Formats seconds into a human-readable time string (H:MM:SS.ms or M:SS.ms or S.ms).
+         * @param {number} totalSeconds - The total seconds to format.
+         * @returns {string} The formatted time string.
+         */
+        const formatTime = (totalSeconds) => {
+            if (isNaN(totalSeconds) || totalSeconds <= 0) return "0.000";
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = Math.floor(totalSeconds % 60);
+            const milliseconds = Math.round((totalSeconds - Math.floor(totalSeconds)) * 1000);
+
+            const msStr = String(milliseconds).padStart(3, '0');
+            const secStr = String(seconds).padStart(2, '0');
+            
+            if (hours > 0) {
+                return `${hours}:${String(minutes).padStart(2, '0')}:${secStr}.${msStr}`;
+            } else {
+                return `${minutes}:${secStr}.${msStr}`;
+            }
+        };
+
+        /**
+         * Gets the current playback time from the active player.
+         * @returns {number} The current time in seconds.
+         */
+        const getCurrentTime = () => {
+            if (!player) return 0;
+            try {
+                if (playerType === 'html5') {
+                    return player.currentTime;
+                }
+                if (playerType === 'youtube' && typeof player.getCurrentTime === 'function') {
+                    const time = player.getCurrentTime();
+                    return typeof time === 'number' ? time : 0;
+                }
+                return 0;
+            } catch (e) {
+                console.error("Error getting current time:", e);
+                return 0;
+            }
+        };
+
+        /**
+         * Seeks the video to a specific time.
+         * @param {number} time - The time in seconds to seek to.
+         */
+        const seekTo = (time) => {
+            if (!player || isSeeking) return;
+            isSeeking = true;
+            const newTime = Math.max(0, Math.min(time, videoDuration));
+            
+            if (playerType === 'html5') {
+                player.currentTime = newTime;
+                if (!player.paused) player.pause();
+            } else if (playerType === 'youtube') {
+                player.seekTo(newTime, true);
+                if (typeof player.pauseVideo === 'function') player.pauseVideo();
+            }
+            // Use a timeout to allow the player to update before re-enabling seeking
+            setTimeout(() => { 
+                isSeeking = false; 
+                updateAllUI(); 
+            }, 150);
+        };
+        
+        /**
+         * Updates all UI elements with the latest timing data. This is the main calculation engine.
+         */
+        const updateAllUI = () => {
+            const videoFps = parseFloat(videoFpsInput.value) || 60;
+            const consoleFps = parseFloat(consoleFpsInput.value) || 60;
+            const currentTime = getCurrentTime() || 0;
+            const currentFrame = Math.round(currentTime * videoFps);
+
+            // Update "Timing Details" panel
+            videoTimeSec.value = currentTime.toFixed(6);
+            videoTimeFmt.value = formatTime(currentTime);
+            currentFrameInput.value = currentFrame;
+
+            // Update "Results" panel
+            const startFrame = parseInt(startFrameInput.value) || 0;
+            const endFrame = parseInt(endFrameInput.value) || 0;
+            const frameCount = (endFrame > startFrame) ? (endFrame - startFrame) : 0;
+            const videoTimeResult = frameCount / videoFps;
+            const consoleTimeResult = frameCount / consoleFps;
+
+            resultFrameCount.value = frameCount;
+            resultVideoTime.value = formatTime(videoTimeResult);
+            resultConsoleTime.value = formatTime(consoleTimeResult);
+
+            // Update "Mod Note"
+            const startTimeFmt = formatTime(startFrame / videoFps);
+            const endTimeFmt = formatTime(endFrame / videoFps);
+            modNoteOutput.value = `Mod Note: Start Time: ${startTimeFmt}, End Time: ${endTimeFmt}, Frame Rate: ${videoFps}, Time: ${formatTime(consoleTimeResult)}`;
+        };
+
+        /**
+         * Cleans up the existing player before loading a new one.
+         */
+        const destroyCurrentPlayer = () => {
+            if (youtubeUpdateInterval) {
+                clearInterval(youtubeUpdateInterval);
+                youtubeUpdateInterval = null;
+            }
+            if (player) {
+                if (playerType === 'youtube' && typeof player.destroy === 'function') {
+                    player.destroy();
+                }
+                player = null;
+                playerType = null;
+            }
+            videoContainer.innerHTML = '<p>Video will appear here</p>';
+            videoDuration = 0;
+            updateAllUI();
+        };
+        
+        // --- Video Loading ---
+
+        const loadHtml5Video = (file) => {
+            destroyCurrentPlayer();
+            const url = URL.createObjectURL(file);
+            videoContainer.innerHTML = `<video id="video-player" src="${url}" controls></video>`;
+            player = document.getElementById('video-player');
+            playerType = 'html5';
+
+            player.addEventListener('loadedmetadata', () => {
+                videoDuration = player.duration;
+                player.addEventListener('timeupdate', updateAllUI);
+                player.addEventListener('pause', updateAllUI);
+                player.addEventListener('seeked', updateAllUI);
+                updateAllUI();
+            });
+        };
+
+        const createYoutubePlayer = (videoId) => {
+            destroyCurrentPlayer();
+            videoContainer.innerHTML = '<div id="youtube-player"></div>';
+            playerType = 'youtube';
+            player = new YT.Player('youtube-player', {
+                height: '100%',
+                width: '100%',
+                videoId: videoId,
+                playerVars: { 'playsinline': 1, 'controls': 1, 'rel': 0, 'modestbranding': 1 },
+                events: {
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange
+                }
+            });
+        };
+        
+        const loadYoutubeVideo = (url) => {
+            const videoId = getYoutubeId(url);
+            if (!videoId) {
+                alert('Invalid YouTube URL');
+                return;
+            }
+            if (isYouTubeApiReady) {
+                createYoutubePlayer(videoId);
+            } else {
+                queuedVideoId = videoId;
+                alert('Please wait for the YouTube API to load, then try again.');
+            }
+        };
+        
+        const getYoutubeId = (url) => {
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[2].length === 11) ? match[2] : null;
+        };
+
+        // --- YouTube API Callbacks ---
+
+        window.onYouTubeIframeAPIReady = () => {
+            isYouTubeApiReady = true;
+            if (queuedVideoId) {
+                createYoutubePlayer(queuedVideoId);
+                queuedVideoId = null;
+            }
+        };
+
+        const onPlayerReady = (event) => {
+            videoDuration = event.target.getDuration();
+            if (youtubeUpdateInterval) clearInterval(youtubeUpdateInterval);
+            // YouTube's timeupdate event is not reliable, so we poll for the time.
+            youtubeUpdateInterval = setInterval(updateAllUI, 250);
+            updateAllUI();
+        };
+
+        const onPlayerStateChange = (event) => {
+            updateAllUI();
+        };
+
+        // --- Event Listeners ---
+
+        // Drag and Drop / File Select
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('dragover'); });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('video/')) loadHtml5Video(file);
+        });
+        selectFileBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) loadHtml5Video(file);
+        });
+
+        // URL Loading
+        loadUrlBtn.addEventListener('click', () => {
+            const url = videoUrlInput.value.trim();
+            if (url) loadYoutubeVideo(url);
+        });
+
+        // Control Buttons
+        controlButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                if (!player) return;
+                const unit = button.dataset.unit;
+                const value = parseFloat(button.dataset.value);
+                const videoFps = parseFloat(videoFpsInput.value) || 60;
+                let timeChange = 0;
+                if (unit === 'f') timeChange = value / videoFps;
+                else if (unit === 's') timeChange = value;
+                else if (unit === 'm') timeChange = value * 60;
+                seekTo(getCurrentTime() + timeChange);
+            });
+        });
+
+        // Set Start/End Frame Buttons
+        setStartBtn.addEventListener('click', () => {
+            if (player) {
+                startFrameInput.value = currentFrameInput.value;
+                updateAllUI();
+            }
+        });
+        setEndBtn.addEventListener('click', () => {
+            if (player) {
+                endFrameInput.value = currentFrameInput.value;
+                updateAllUI();
+            }
+        });
+
+        // Go To Frame Buttons
+        const goToFrame = (frame) => {
+            if (!player) return;
+            const videoFps = parseFloat(videoFpsInput.value) || 60;
+            const time = frame / videoFps;
+            seekTo(time);
+        };
+        goStartBtn.addEventListener('click', () => goToFrame(parseInt(startFrameInput.value)));
+        goEndBtn.addEventListener('click', () => goToFrame(parseInt(endFrameInput.value)));
+
+        // Input Changes
+        videoFpsInput.addEventListener('change', updateAllUI);
+        consolePreset.addEventListener('change', () => {
+            consoleFpsInput.value = consolePreset.value;
+            updateAllUI();
+        });
+        startFrameInput.addEventListener('change', updateAllUI);
+        endFrameInput.addEventListener('change', updateAllUI);
+    });
+    </script>
+</body>
+</html>
