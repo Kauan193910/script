@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frame Count Tool</title>
+    <style>
+        body {
+            background-color: #2c2c2c;
+            color: #f0f0f0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            padding: 20px;
+        }
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .panel {
+            background-color: #3d3d3d;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .full-width {
+            grid-column: 1 / -1;
+        }
+        #video-player-container {
+            background-color: #000;
+            padding: 0;
+            min-height: 480px;
+            position: relative;
+        }
+        video, #youtube-player {
+            width: 100%;
+            height: 100%;
+            min-height: 480px;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        .controls-grid {
+            display: grid;
+            grid-template-rows: repeat(4, auto);
+            gap: 10px;
+        }
+        .control-row {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+        }
+        .top-control-row {
+             display: grid;
+            grid-template-columns: 2.5fr 1fr 2.5fr;
+            gap: 10px;
+        }
+        .controls-grid button {
+            background-color: #f0f0f0;
+            color: #1c1c1c;
+            border: none;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: 500;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .controls-grid button:hover {
+            background-color: #dcdcdc;
+        }
+        .play-pause-btn {
+            font-size: 24px;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #ccc;
+        }
+        .input-group input, .input-group .button {
+            width: 100%;
+            padding: 8px;
+            background-color: #2c2c2c;
+            border: 1px solid #555;
+            color: #f0f0f0;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .input-group .button {
+            background-color: #007bff;
+            cursor: pointer;
+            text-align: center;
+        }
+        .input-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .input-row .input-group {
+            flex-grow: 1;
+            margin-bottom: 0;
+        }
+        .action-button {
+            padding: 8px 12px;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            height: 35px;
+            font-size: 14px;
+        }
+        .set-button {
+            background-color: #007bff;
+        }
+        .go-button {
+            background-color: #28a745;
+        }
+        .remove-button {
+            width: 100%;
+            margin-top: 10px;
+            background-color: #dc3545;
+        }
+        h2 {
+            border-bottom: 1px solid #555;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+        #file-input-panel {
+            text-align: center;
+            border: 2px dashed #555;
+        }
+        #file-input-panel p { margin: 0; }
+        #file-input { margin-top: 10px; }
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #555;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        .tab-button {
+            padding: 10px 15px;
+            cursor: pointer;
+            border: none;
+            background-color: transparent;
+            color: #ccc;
+            border-bottom: 2px solid transparent;
+        }
+        .tab-button.active {
+            color: #fff;
+            border-bottom: 2px solid #007bff;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .load-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .load-buttons button {
+             flex-grow: 1;
+             padding: 10px;
+             font-size: 14px;
+             background-color: #007bff;
+             color: white;
+             border: none;
+             border-radius: 4px;
+             cursor: pointer;
+        }
+        #add-tab-button {
+            margin-left: 10px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .container { grid-template-columns: 1fr; gap: 15px; }
+            h1 { font-size: 24px; text-align: center; }
+            .panel { padding: 15px; }
+            #video-player-container, video, #youtube-player { min-height: 240px; }
+            .controls-grid button { font-size: 14px; }
+            .top-control-row button { padding: 10px 5px; }
+            .play-pause-btn { font-size: 20px; }
+            .control-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Frame Count Tool</h1>
+
+    <div class="container">
+        <div class="panel">
+            <h2>Local Video</h2>
+            <div id="file-input-panel" style="padding:20px;">
+                 <p>Select a video file from your computer.</p>
+                 <input type="file" id="file-input" accept="video/*">
+            </div>
+        </div>
+        <div class="panel">
+            <h2>Remote Video</h2>
+             <div class="input-group">
+                <label for="video-url">Paste a YouTube URL</label>
+                <input type="text" id="video-url" placeholder="https://www.youtube.com/watch?v=...">
+            </div>
+            <div class="input-group">
+                <button class="button" onclick="loadYouTubeVideo()">Load URL</button>
+            </div>
+        </div>
+        <div id="video-player-container" class="panel full-width">
+            <video id="video"></video>
+            <div id="youtube-player"></div>
+        </div>
+        <div class="panel full-width">
+             <div class="controls-grid">
+                <div class="top-control-row">
+                    <button onclick="setStartFrame()">SET START FRAME</button>
+                    <button id="play-pause-btn" class="play-pause-btn" onclick="playPause()">▶</button>
+                    <button onclick="setEndFrame()">SET END FRAME</button>
+                </div>
+                <div class="control-row">
+                    <button onclick="seekFrames(-10)">-10F</button>
+                    <button onclick="seekFrames(-5)">-5F</button>
+                    <button onclick="seekFrames(-1)">-1F</button>
+                    <button onclick="seekFrames(1)">+1F</button>
+                    <button onclick="seekFrames(5)">+5F</button>
+                    <button onclick="seekFrames(10)">+10F</button>
+                </div>
+                <div class="control-row">
+                    <button onclick="seekSeconds(-10)">-10S</button>
+                    <button onclick="seekSeconds(-5)">-5S</button>
+                    <button onclick="seekSeconds(-1)">-1S</button>
+                    <button onclick="seekSeconds(1)">+1S</button>
+                    <button onclick="seekSeconds(5)">+5S</button>
+                    <button onclick="seekSeconds(10)">+10S</button>
+                </div>
+                <div class="control-row">
+                    <button onclick="seekMinutes(-10)">-10M</button>
+                    <button onclick="seekMinutes(-5)">-5M</button>
+                    <button onclick="seekMinutes(-1)">-1M</button>
+                    <button onclick="seekMinutes(1)">+1M</button>
+                    <button onclick="seekMinutes(5)">+5M</button>
+                    <button onclick="seekMinutes(10)">+10M</button>
+                </div>
+            </div>
+        </div>
+        <div class="panel">
+            <h2>Timing Details</h2>
+            <div class="input-group">
+                <label for="video-fps">Video FPS</label>
+                <input type="number" id="video-fps" value="60">
+            </div>
+            <div class="input-group">
+                <label>Current Time</label>
+                <input type="text" id="current-time" readonly>
+            </div>
+            <div class="input-group">
+                <label>Current Frame</label>
+                <input type="number" id="current-frame" readonly>
+            </div>
+             <div class="input-row">
+                <div class="input-group">
+                    <label for="start-frame">Start Frame</label>
+                    <input type="number" id="start-frame" value="0">
+                </div>
+                <button class="action-button set-button" onclick="setStartFrame()">Set</button>
+                <button class="action-button go-button" onclick="goToMainStartFrame()">Go</button>
+            </div>
+            <div class="input-row">
+                <div class="input-group">
+                    <label for="end-frame">End Frame</label>
+                    <input type="number" id="end-frame" value="0">
+                </div>
+                <button class="action-button set-button" onclick="setEndFrame()">Set</button>
+                <button class="action-button go-button" onclick="goToMainEndFrame()">Go</button>
+            </div>
+        </div>
+        <div class="panel">
+            <h2>Results</h2>
+             <div class="input-group">
+                <label>Video Time (with loads)</label>
+                <input type="text" id="result-video-time-with-loads" readonly>
+            </div>
+            <div class="input-group">
+                <label>Frame Count (without loads)</label>
+                <input type="number" id="result-frame-count" readonly>
+            </div>
+            <div class="input-group">
+                <label>Video Time (without loads)</label>
+                <input type="text" id="result-video-time" readonly>
+            </div>
+        </div>
+        <div class="panel full-width">
+           <div style="display: flex; align-items: center; border-bottom: 1px solid #555; padding-bottom: 10px;">
+                <h2 style="border: none; padding: 0; margin: 0;">Loads</h2>
+                <button id="add-tab-button" onclick="addLoadTab()">+ Add Load</button>
+            </div>
+            <div id="tabs-container" class="tabs"></div>
+            <div id="tab-content-container"></div>
+        </div>
+    </div>
+    
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script>
+        // DOM Elements
+        const localVideo = document.getElementById('video');
+        const fileInput = document.getElementById('file-input');
+        const videoFpsInput = document.getElementById('video-fps');
+        const currentTimeInput = document.getElementById('current-time');
+        const currentFrameInput = document.getElementById('current-frame');
+        const startFrameInput = document.getElementById('start-frame');
+        const endFrameInput = document.getElementById('end-frame');
+        const resultFrameCountInput = document.getElementById('result-frame-count');
+        const resultVideoTimeInput = document.getElementById('result-video-time');
+        const resultVideoTimeWithLoadsInput = document.getElementById('result-video-time-with-loads');
+        const tabsContainer = document.getElementById('tabs-container');
+        const tabContentContainer = document.getElementById('tab-content-container');
+        const youtubePlayerDiv = document.getElementById('youtube-player');
+        const videoUrlInput = document.getElementById('video-url');
+        const playPauseBtn = document.getElementById('play-pause-btn');
+
+        // Player State
+        let activePlayer = 'local';
+        let ytPlayer;
+        let infoUpdateInterval;
+        let loads = [];
+        let activeTabIndex = 0;
+
+        // --- Player Abstraction ---
+        function getCurrentTime() {
+            if (activePlayer === 'local') return localVideo.currentTime;
+            if (activePlayer === 'youtube' && ytPlayer && typeof ytPlayer.getCurrentTime === 'function') return ytPlayer.getCurrentTime();
+            return 0;
+        }
+        function getDuration() {
+            if (activePlayer === 'local') return localVideo.duration;
+            if (activePlayer === 'youtube' && ytPlayer && typeof ytPlayer.getDuration === 'function') return ytPlayer.getDuration();
+            return 0;
+        }
+        function seekTo(time) {
+            const newTime = Math.max(0, time);
+            if (activePlayer === 'local') localVideo.currentTime = newTime;
+            if (activePlayer === 'youtube' && ytPlayer) ytPlayer.seekTo(newTime, true);
+        }
+
+        // --- Event Listeners ---
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                localVideo.src = URL.createObjectURL(file);
+                switchToLocalPlayer();
+            }
+        });
+        localVideo.addEventListener('timeupdate', updateInfo);
+        localVideo.addEventListener('loadedmetadata', onVideoLoaded);
+        localVideo.addEventListener('seeked', updateInfo);
+        localVideo.addEventListener('play', () => playPauseBtn.innerHTML = '❚❚');
+        localVideo.addEventListener('pause', () => playPauseBtn.innerHTML = '▶');
+        videoFpsInput.addEventListener('change', onVideoLoaded);
+        startFrameInput.addEventListener('change', calculateResults);
+        endFrameInput.addEventListener('change', calculateResults);
+
+        // --- Player Setup ---
+        function switchToLocalPlayer() {
+            activePlayer = 'local';
+            if (ytPlayer && typeof ytPlayer.stopVideo === 'function') ytPlayer.stopVideo();
+            youtubePlayerDiv.style.display = 'none';
+            localVideo.style.display = 'block';
+            clearInterval(infoUpdateInterval);
+        }
+        function switchToYouTubePlayer() {
+            activePlayer = 'youtube';
+            localVideo.pause();
+            localVideo.style.display = 'none';
+            youtubePlayerDiv.style.display = 'block';
+            clearInterval(infoUpdateInterval);
+            infoUpdateInterval = setInterval(updateInfo, 250);
+        }
+        function onVideoLoaded() {
+            const duration = getDuration();
+            if (!isNaN(duration) && duration > 0) {
+                 const fps = getFps();
+                 startFrameInput.value = 0;
+                 endFrameInput.value = Math.floor(duration * fps);
+                 updateInfo();
+                 calculateResults();
+            }
+        }
+        function getFps() { return parseFloat(videoFpsInput.value) || 60; }
+        function updateInfo() {
+            const currentTime = getCurrentTime();
+            currentTimeInput.value = formatTime(currentTime);
+            currentFrameInput.value = Math.round(currentTime * getFps());
+        }
+
+        // --- Controls ---
+        function playPause() {
+            if (activePlayer === 'local') {
+                if (localVideo.paused) localVideo.play();
+                else localVideo.pause();
+            } else if (activePlayer === 'youtube' && ytPlayer && typeof ytPlayer.getPlayerState === 'function') {
+                const state = ytPlayer.getPlayerState();
+                if (state === YT.PlayerState.PLAYING) ytPlayer.pauseVideo();
+                else ytPlayer.playVideo();
+            }
+        }
+        function setStartFrame() {
+            startFrameInput.value = Math.round(getCurrentTime() * getFps());
+            calculateResults();
+        }
+        function setEndFrame() {
+            endFrameInput.value = Math.round(getCurrentTime() * getFps());
+            calculateResults();
+        }
+        function goToFrame(frameNumber) { seekTo(frameNumber / getFps()); }
+        function goToMainStartFrame() { goToFrame(parseInt(startFrameInput.value)); }
+        function goToMainEndFrame() { goToFrame(parseInt(endFrameInput.value)); }
+        function goToLoadFrame(type, index) { goToFrame(loads[index][type]); }
+        function seekFrames(frameCount) { seekTo(getCurrentTime() + frameCount / getFps()); }
+        function seekSeconds(secondCount) { seekTo(getCurrentTime() + secondCount); }
+        function seekMinutes(minuteCount) { seekTo(getCurrentTime() + minuteCount * 60); }
+        
+        // --- YouTube Integration ---
+        function onYouTubeIframeAPIReady() {}
+        function loadYouTubeVideo() {
+            const url = videoUrlInput.value;
+            const videoId = getYouTubeId(url);
+            if (!videoId) {
+                alert("Invalid YouTube URL.");
+                return;
+            }
+            switchToYouTubePlayer();
+            if (ytPlayer) {
+                ytPlayer.loadVideoById(videoId);
+            } else {
+                ytPlayer = new YT.Player('youtube-player', {
+                    height: '100%', width: '100%', videoId: videoId,
+                    playerVars: { 'autoplay': 0, 'controls': 1, 'rel': 0 },
+                    events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange }
+                });
+            }
+        }
+        function onPlayerReady(event) { onVideoLoaded(); }
+        function onPlayerStateChange(event) {
+            playPauseBtn.innerHTML = event.data == YT.PlayerState.PLAYING ? '❚❚' : '▶';
+        }
+        function getYouTubeId(url) {
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[2].length === 11) ? match[2] : null;
+        }
+
+        // --- Load Tab Management ---
+        function renderAllTabs() {
+            tabsContainer.innerHTML = '';
+            tabContentContainer.innerHTML = '';
+            loads.forEach((load, index) => {
+                // Fix: Always re-calculate the name based on the current index to keep it sequential.
+                const newName = `Load ${index + 1}`;
+                load.name = newName;
+
+                const tabButton = document.createElement('button');
+                tabButton.className = 'tab-button';
+                tabButton.dataset.index = index;
+                tabButton.onclick = () => switchTab(index);
+                tabButton.textContent = newName;
+                tabsContainer.appendChild(tabButton);
+
+                const tabContent = document.createElement('div');
+                tabContent.className = 'tab-content';
+                tabContent.id = `tab-content-${index}`;
+                tabContent.innerHTML = `
+                    <div class="input-row">
+                        <div class="input-group"><label>Start Frame</label><input type="number" id="load-start-input-${index}" value="${load.start}" readonly></div>
+                        <button class="action-button go-button" onclick="goToLoadFrame('start', ${index})">Go</button>
+                    </div>
+                    <div class="input-row">
+                        <div class="input-group"><label>End Frame</label><input type="number" id="load-end-input-${index}" value="${load.end}" readonly></div>
+                        <button class="action-button go-button" onclick="goToLoadFrame('end', ${index})">Go</button>
+                    </div>
+                    <div class="load-buttons">
+                        <button onclick="setLoadStart(${index})">Set Start Load</button>
+                        <button onclick="setLoadEnd(${index})">Set End Load</button>
+                    </div>
+                    <button class="action-button remove-button" onclick="removeLoad(${index})">Remove Load</button>
+                `;
+                tabContentContainer.appendChild(tabContent);
+            });
+            switchTab(activeTabIndex);
+        }
+
+        function addLoadTab() {
+            // Fix: The name is now set dynamically in renderAllTabs, so we can push a blank object.
+            loads.push({ name: '', start: 0, end: 0 });
+            activeTabIndex = loads.length - 1;
+            renderAllTabs();
+            calculateResults();
+        }
+        
+        function removeLoad(indexToRemove) {
+            // Remove the selected load from the data array
+            loads.splice(indexToRemove, 1);
+
+            // If we just removed the very last load, create a new blank one.
+            if (loads.length === 0) {
+                addLoadTab(); // This will create a new load and set activeTabIndex to 0
+                return;
+            }
+
+            // Determine the next tab to select. Default to the one before the deleted tab.
+            // Math.max ensures the index is never negative.
+            activeTabIndex = Math.max(0, indexToRemove - 1);
+            
+            // Re-render all tabs and content. The new activeTabIndex will be used.
+            renderAllTabs();
+            calculateResults();
+        }
+
+        function switchTab(index) {
+            activeTabIndex = index;
+            document.querySelectorAll('.tab-button').forEach((btn, i) => btn.classList.toggle('active', i === index));
+            document.querySelectorAll('.tab-content').forEach((content, i) => content.classList.toggle('active', i === index));
+        }
+        function setLoadStart(index) {
+            const currentFrame = Math.round(getCurrentTime() * getFps());
+            loads[index].start = currentFrame;
+            document.getElementById(`load-start-input-${index}`).value = currentFrame;
+            calculateResults();
+        }
+        function setLoadEnd(index) {
+            const currentFrame = Math.round(getCurrentTime() * getFps());
+            loads[index].end = currentFrame;
+            document.getElementById(`load-end-input-${index}`).value = currentFrame;
+            calculateResults();
+        }
+        
+        // --- Calculation ---
+        function calculateResults() {
+            const fps = getFps();
+            let totalLoadFrames = 0;
+            loads.forEach(load => {
+                if (load.end > load.start) {
+                    totalLoadFrames += (load.end - load.start);
+                }
+            });
+            const startFrame = parseInt(startFrameInput.value) || 0;
+            const endFrame = parseInt(endFrameInput.value) || 0;
+            const totalFramesWithLoads = Math.max(0, endFrame - startFrame);
+            const finalFrameCount = Math.max(0, totalFramesWithLoads - totalLoadFrames);
+            resultVideoTimeWithLoadsInput.value = formatTime(totalFramesWithLoads / fps);
+            resultFrameCountInput.value = finalFrameCount;
+            resultVideoTimeInput.value = formatTime(finalFrameCount / fps);
+        }
+        function formatTime(seconds) {
+            if (isNaN(seconds) || seconds < 0) seconds = 0;
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = seconds % 60;
+            if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toFixed(3).padStart(6, '0')}`;
+            return `${m}:${s.toFixed(3).padStart(6, '0')}`;
+        }
+        
+        // --- Initial State ---
+        function initialize() {
+            addLoadTab(); 
+            switchToLocalPlayer();
+            updateInfo();
+        }
+        
+        initialize();
+    </script>
+</body>
+</html>
